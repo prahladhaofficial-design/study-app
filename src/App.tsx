@@ -24,6 +24,8 @@ import { SettingsPage } from './pages/SettingsPage'
 import { SoundsPage } from './pages/SoundsPage'
 import { TasksPage } from './pages/TasksPage'
 import { UpgradePage } from './pages/UpgradePage'
+import { LandingPage } from './pages/site/LandingPage'
+import { PrivacyPage, RefundPage, TermsPage } from './pages/site/LegalPages'
 
 const BUILT = new Set(['/', '/account', '/log', '/stats', '/settings', '/cards', '/recall', '/brain-dump', '/explain', '/sketch', '/goals', '/sounds', '/tasks', '/moments', '/projects', '/arena'])
 
@@ -33,6 +35,10 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<AuthPage />} />
+          <Route path="/welcome" element={<LandingPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/refunds" element={<RefundPage />} />
           <Route element={<RequireUser />}>
             <Route path="/upgrade" element={<UpgradePage />} />
             <Route element={<RequireAccess />}>

@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { LandingPage } from '../pages/site/LandingPage'
 import { useAuth } from './AuthProvider'
 
 function Splash() {
@@ -10,7 +11,11 @@ export function RequireUser() {
   const { loading, session, preview } = useAuth()
   const location = useLocation()
   if (loading) return <Splash />
-  if (!session && !preview) return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  if (!session && !preview) {
+    // Signed-out visitors to the home page see the public landing page.
+    if (location.pathname === '/') return <LandingPage />
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  }
   return <Outlet />
 }
 

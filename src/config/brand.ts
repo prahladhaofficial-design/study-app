@@ -5,4 +5,7 @@ export const BRAND = {
   tagline: 'Deep focus, visible progress.',
   supportEmail: 'support@example.com',
   trialDays: 7,
+  // Shown on the legal pages. Must match the name used for payments verification.
+  owner: 'Hardik',
+  region: 'Telangana, India',
 } as const
