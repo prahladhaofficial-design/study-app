@@ -21,7 +21,9 @@ jobs:
         with:
           deno-version: v2.x
       - name: Type-check functions
-        run: deno check supabase/functions/*/index.ts
+        # Runs from the functions folder so its deno.json applies instead of the web app's package.json.
+        working-directory: supabase/functions
+        run: deno check */index.ts
 
   deploy:
     needs: check
