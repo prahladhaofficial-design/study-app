@@ -154,7 +154,7 @@ function TaskRow({ task, today, onToggle }: { task: Task; today: string; onToggl
         </button>
       )}
       {task.dueDay && task.dueDay !== today && !task.done && <span className={clsx('shrink-0 text-xs', task.dueDay < today ? 'text-danger' : 'text-faint')}>{dueLabel(task.dueDay, today)}</span>}
-      <button type="button" aria-label="Delete task" onClick={() => void db.tasks.delete(task.id)} className="shrink-0 p-1 text-faint opacity-0 hover:text-danger group-hover:opacity-100 focus:opacity-100">
+      <button type="button" aria-label="Delete task" onClick={() => window.confirm(`Delete "${task.title}"?`) && void db.tasks.delete(task.id)} className="shrink-0 p-1 text-faint opacity-0 hover:text-danger group-hover:opacity-100 pointer-coarse:opacity-100 focus:opacity-100">
         <Trash2 size={14} />
       </button>
     </li>

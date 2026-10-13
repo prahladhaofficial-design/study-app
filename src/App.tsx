@@ -1,12 +1,11 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthProvider'
 import { RequireAccess, RequireUser } from './auth/guards'
-import { ALL_NAV } from './components/nav'
+import { NotFound } from './components/ui'
 import { AppLayout } from './layouts/AppLayout'
 import { AccountPage } from './pages/AccountPage'
 import { ArenaPage } from './pages/ArenaPage'
 import { AuthPage } from './pages/AuthPage'
-import { ComingSoon } from './pages/ComingSoon'
 import { FocusPage } from './pages/FocusPage'
 import { GoalsPage } from './pages/GoalsPage'
 import { DeckPage } from './pages/cards/DeckPage'
@@ -25,9 +24,8 @@ import { SoundsPage } from './pages/SoundsPage'
 import { TasksPage } from './pages/TasksPage'
 import { UpgradePage } from './pages/UpgradePage'
 import { LandingPage } from './pages/site/LandingPage'
+import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { PrivacyPage, RefundPage, TermsPage } from './pages/site/LegalPages'
-
-const BUILT = new Set(['/', '/account', '/log', '/stats', '/settings', '/cards', '/recall', '/brain-dump', '/explain', '/sketch', '/goals', '/sounds', '/tasks', '/moments', '/projects', '/arena'])
 
 export default function App() {
   return (
@@ -35,6 +33,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<AuthPage />} />
+          <Route path="/reset" element={<ResetPasswordPage />} />
           <Route path="/welcome" element={<LandingPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
@@ -61,11 +60,8 @@ export default function App() {
                 <Route path="/tasks" element={<TasksPage />} />
                 <Route path="/moments" element={<MomentsPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
-                {ALL_NAV.filter((n) => !BUILT.has(n.to)).map((n) => (
-                  <Route key={n.to} path={n.to} element={<ComingSoon path={n.to} />} />
-                ))}
                 <Route path="/arena" element={<ArenaPage />} />
-                <Route path="*" element={<ComingSoon path="" />} />
+                <Route path="*" element={<NotFound title="Page not found" hint="Check the link, or head back to the timer." back="/" backLabel="Back to Focus" />} />
               </Route>
             </Route>
           </Route>

@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { Crown, Globe2, RefreshCw, Trophy } from 'lucide-react'
+import { Crown, EyeOff, Globe2, Pencil, RefreshCw, Trophy } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { Card, PageHeader, Segmented } from '../components/ui'
@@ -54,6 +54,7 @@ export function ArenaPage() {
   const [error, setError] = useState('')
   const [profile, setProfile] = useState<ArenaProfile | null>(null)
   const [loading, setLoading] = useState(false)
+  const [editing, setEditing] = useState(false)
 
   const load = useCallback(async () => {
     if (preview) {
@@ -86,6 +87,7 @@ export function ArenaPage() {
   }, [uid])
 
   const needsProfile = !preview && profile !== null && (!profile.display_name || !profile.country_code)
+  const joined = !preview && profile !== null && !needsProfile
   const me = people?.find((r) => r.is_me)
   const top = countries?.[0]?.minutes ?? 1
 
@@ -95,14 +97,38 @@ export function ArenaPage() {
         title="Study arena"
         subtitle="See how your focus time stacks up against students everywhere."
         actions={
+          <div className="flex gap-2">
+            {joined && !editing && (
+              <button type="button" onClick={() => setEditing(true)} className="flex items-center gap-1.5 rounded-xl border border-line px-3 text-sm text-dim hover:text-ink">
+                <Pencil size={14} /> Edit profile
+              </button>
+            )}
           <button type="button" onClick={() => void load()} disabled={loading} aria-label="Refresh" className="grid size-10 place-items-center rounded-xl border border-line text-dim hover:text-ink disabled:opacity-50">
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
+          </div>
         }
       />
 
       {preview && <p className="mb-4 rounded-xl border border-warm/40 bg-warm/10 px-4 py-2 text-sm text-warm">Preview mode: showing sample data.</p>}
-      {needsProfile && uid && <JoinCard uid={uid} profile={profile} onSaved={(p) => (setProfile(p), void load())} />}
+      {(needsProfile || editing) && uid && profile && (
+        <JoinCard
+          uid={uid}
+          profile={profile}
+          editing={!needsProfile}
+          onCancel={() => setEditing(false)}
+          onSaved={(p) => {
+            setProfile(p)
+            setEditing(false)
+            void load()
+          }}
+        />
+      )}
+      {joined && profile?.arena_hidden && !editing && (
+        <Card className="mb-5 flex items-center gap-3 text-sm text-dim">
+          <EyeOff size={16} /> You're hidden from the arena. Your focus time doesn't appear on the leaderboard or in country totals.
+        </Card>
+      )}
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <Segmented
@@ -195,15 +221,28 @@ export function ArenaPage() {
   )
 }
 
-function JoinCard({ uid, profile, onSaved }: { uid: string; profile: ArenaProfile; onSaved: (p: ArenaProfile) => void }) {
+function JoinCard({
+  uid,
+  profile,
+  editing,
+  onSaved,
+  onCancel,
+}: {
+  uid: string
+  profile: ArenaProfile
+  editing: boolean
+  onSaved: (p: ArenaProfile) => void
+  onCancel: () => void
+}) {
   const [name, setName] = useState(profile.display_name ?? '')
+  const [hidden, setHidden] = useState(profile.arena_hidden)
   const [country, setCountry] = useState(profile.country_code ?? guessCountry(navigator.languages ?? []) ?? '')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
   async function submit(e: FormEvent) {
     e.preventDefault()
-    const p = { display_name: name.trim().slice(0, 24) || null, country_code: country || null }
+    const p = { display_name: name.trim().slice(0, 24) || null, country_code: country || null, arena_hidden: hidden }
     if (!p.display_name || !p.country_code) return setError('Pick a name and a country.')
     setBusy(true)
     const err = await saveProfile(uid, p)
@@ -214,8 +253,8 @@ function JoinCard({ uid, profile, onSaved }: { uid: string; profile: ArenaProfil
 
   return (
     <Card className="mb-5">
-      <p className="font-medium">Join the arena</p>
-      <p className="mb-3 text-sm text-dim">Choose how you appear on the leaderboard. Only your name, country and focus time are shown.</p>
+      <p className="font-medium">{editing ? 'Your arena profile' : 'Join the arena'}</p>
+      <p className="mb-3 text-sm text-dim">Choose how you appear on the leaderboard. Only your name, country and focus time are shown. Timed sessions count, up to 16 hours a day; sessions added by hand don't.</p>
       <form onSubmit={(e) => void submit(e)} className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-40 flex-1 flex-col gap-1 text-sm">
           Display name
@@ -233,8 +272,17 @@ function JoinCard({ uid, profile, onSaved }: { uid: string; profile: ArenaProfil
           </select>
         </label>
         <button type="submit" disabled={busy} className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-ink disabled:opacity-60">
-          {busy ? 'Saving…' : 'Join'}
+          {busy ? 'Saving…' : editing ? 'Save' : 'Join'}
         </button>
+        {editing && (
+          <button type="button" onClick={onCancel} className="rounded-xl border border-line px-4 py-2.5 text-sm text-dim hover:text-ink">
+            Cancel
+          </button>
+        )}
+        <label className="flex w-full items-center gap-2 text-sm text-dim">
+          <input type="checkbox" checked={hidden} onChange={(e) => setHidden(e.target.checked)} />
+          Hide me from the leaderboard and country totals
+        </label>
       </form>
       {error && <p className="mt-2 text-sm text-danger">{error}</p>}
     </Card>

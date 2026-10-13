@@ -5,9 +5,9 @@ import { BRAND } from '../config/brand'
 import { isNativeApp } from '../lib/platform'
 
 export function AuthPage() {
-  const { session, preview, signIn, signUp, signInWithGoogle } = useAuth()
+  const { session, preview, signIn, signUp, signInWithGoogle, sendPasswordReset } = useAuth()
   const initial = (useLocation().state as { mode?: 'signin' } | null)?.mode ?? 'signup'
-  const [mode, setMode] = useState<'signin' | 'signup'>(initial)
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>(initial)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -21,10 +21,32 @@ export function AuthPage() {
     setBusy(true)
     setError(null)
     setNotice(null)
-    const err = mode === 'signin' ? await signIn(email, password) : await signUp(email, password)
+    if (mode === 'forgot') {
+      const err = await sendPasswordReset(email)
+      setBusy(false)
+      if (err) setError(err)
+      else setNotice('If that email has an account, a reset link is on its way. Check your inbox and spam folder.')
+      return
+    }
+    if (mode === 'signin') {
+      const err = await signIn(email, password)
+      setBusy(false)
+      if (err) setError(err)
+      return
+    }
+    const res = await signUp(email, password)
     setBusy(false)
-    if (err) setError(err)
-    else if (mode === 'signup') setNotice('Check your inbox to confirm your email, then sign in.')
+    if (res.error) setError(res.error)
+    else if (res.existing) {
+      setMode('signin')
+      setNotice('This email already has an account. Sign in below, or use "Forgot password?" if you need a new one.')
+    } else setNotice('Check your inbox to confirm your email, then sign in.')
+  }
+
+  function switchMode(next: 'signin' | 'signup' | 'forgot') {
+    setMode(next)
+    setError(null)
+    setNotice(null)
   }
 
   return (
@@ -34,12 +56,12 @@ export function AuthPage() {
           <Link to="/" aria-label={`${BRAND.name} home`}>
             <img src="/favicon.svg" alt="" className="size-12" />
           </Link>
-          <h1 className="text-2xl font-semibold tracking-tight">{mode === 'signup' ? `Start your ${BRAND.trialDays}-day free trial` : 'Welcome back'}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{mode === 'signup' ? `Start your ${BRAND.trialDays}-day free trial` : mode === 'forgot' ? 'Reset your password' : 'Welcome back'}</h1>
           <p className="text-sm text-dim">{BRAND.tagline}</p>
         </div>
 
         {/* Google's sign-in redirect only returns to the website, so the apps use email for now. */}
-        {BRAND.googleSignIn && !isNativeApp() && (
+        {BRAND.googleSignIn && !isNativeApp() && mode !== 'forgot' && (
           <>
             <button
               type="button"
@@ -62,8 +84,16 @@ export function AuthPage() {
             Email
             <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-xl border border-line bg-surface px-3 py-2.5 text-ink" />
           </label>
+          {mode !== 'forgot' && (
           <label className="flex flex-col gap-1 text-sm">
-            Password
+            <span className="flex items-center justify-between">
+              Password
+              {mode === 'signin' && (
+                <button type="button" onClick={() => switchMode('forgot')} className="text-xs text-accent">
+                  Forgot password?
+                </button>
+              )}
+            </span>
             <input
               type="password"
               required
@@ -74,17 +104,18 @@ export function AuthPage() {
               className="rounded-xl border border-line bg-surface px-3 py-2.5 text-ink"
             />
           </label>
+          )}
           {error && <p role="alert" className="text-sm text-danger">{error}</p>}
           {notice && <p className="text-sm text-accent">{notice}</p>}
           <button type="submit" disabled={busy} className="mt-1 rounded-xl bg-accent py-3 text-sm font-semibold text-accent-ink hover:opacity-90 disabled:opacity-60">
-            {busy ? 'Please wait…' : mode === 'signup' ? 'Create account' : 'Sign in'}
+            {busy ? 'Please wait…' : mode === 'signup' ? 'Create account' : mode === 'forgot' ? 'Send reset link' : 'Sign in'}
           </button>
         </form>
 
         <p className="mt-6 text-center text-sm text-dim">
-          {mode === 'signup' ? 'Already have an account?' : 'New here?'}{' '}
-          <button type="button" className="font-medium text-accent" onClick={() => setMode(mode === 'signup' ? 'signin' : 'signup')}>
-            {mode === 'signup' ? 'Sign in' : 'Create one'}
+          {mode === 'signup' ? 'Already have an account?' : mode === 'forgot' ? 'Remembered it?' : 'New here?'}{' '}
+          <button type="button" className="font-medium text-accent" onClick={() => switchMode(mode === 'signin' ? 'signup' : 'signin')}>
+            {mode === 'signin' ? 'Create one' : 'Sign in'}
           </button>
         </p>
         <p className="mt-4 text-center text-xs text-faint">

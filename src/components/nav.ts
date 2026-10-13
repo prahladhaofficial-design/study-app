@@ -13,7 +13,6 @@ import {
   PenLine,
   ScrollText,
   Settings,
-  Sparkles,
   Trophy,
   UserRound,
   type LucideIcon,
@@ -50,7 +49,6 @@ export const NAV_LEARN: NavItem[] = [
 ]
 
 export const NAV_FOOT: NavItem[] = [
-  { to: '/more', label: 'More', icon: Sparkles, blurb: 'Extra tools and experiments.', day: 5 },
   { to: '/settings', label: 'Settings', icon: Settings, blurb: 'Timer, sounds, theme and data.', day: 2 },
   { to: '/account', label: 'Account', icon: UserRound, blurb: 'Plan, billing and sign out.', day: 1 },
 ]

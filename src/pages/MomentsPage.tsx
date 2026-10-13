@@ -59,7 +59,7 @@ export function MomentsPage() {
     <div className="mx-auto max-w-5xl py-6">
       <PageHeader
         title="Moments"
-        subtitle="A visual diary of your study days. Photos stay on this device."
+        subtitle="A visual diary of your study days. Photos are backed up privately and appear on all your devices."
         actions={
           <button
             type="button"

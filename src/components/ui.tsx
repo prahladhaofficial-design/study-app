@@ -52,12 +52,12 @@ export function Toggle({ checked, onChange, label }: { checked: boolean; onChang
   )
 }
 
-export function NotFound({ title, back, backLabel }: { title: string; back: string; backLabel: string }) {
+export function NotFound({ title, back, backLabel, hint = 'It may have been deleted, or the link is wrong.' }: { title: string; back: string; backLabel: string; hint?: string }) {
   return (
     <div className="mx-auto max-w-md py-16">
       <Card className="flex flex-col items-center gap-3 py-10 text-center">
         <p className="font-medium">{title}</p>
-        <p className="text-sm text-dim">It may have been deleted, or the link is wrong.</p>
+        <p className="text-sm text-dim">{hint}</p>
         <Link to={back} className="mt-2 rounded-xl border border-line px-4 py-2 text-sm text-dim hover:text-ink">
           {backLabel}
         </Link>

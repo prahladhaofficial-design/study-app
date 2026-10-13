@@ -163,7 +163,7 @@ export function DeckPage() {
               <button type="button" aria-label="Edit card" onClick={() => startEdit(c)} className="grid size-8 place-items-center rounded-lg text-dim hover:bg-surface-2 hover:text-ink">
                 <Pencil size={14} />
               </button>
-              <button type="button" aria-label="Delete card" onClick={() => void db.cards.delete(c.id)} className="grid size-8 place-items-center rounded-lg text-dim hover:bg-surface-2 hover:text-danger">
+              <button type="button" aria-label="Delete card" onClick={() => window.confirm('Delete this card?') && void db.cards.delete(c.id)} className="grid size-8 place-items-center rounded-lg text-dim hover:bg-surface-2 hover:text-danger">
                 <Trash2 size={14} />
               </button>
             </div>

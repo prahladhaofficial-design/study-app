@@ -71,6 +71,7 @@ export function SessionDialog({
           Notes
           <textarea rows={5} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="What did you cover? What felt hard?" className="resize-y rounded-lg border border-line bg-surface-2 px-3 py-2" />
         </label>
+        <p className="text-xs text-faint">Sessions added or retimed by hand count in your stats but not in the Study arena.</p>
         <div className="flex justify-end gap-2">
           <button type="button" onClick={() => ref.current?.close()} className="rounded-xl border border-line px-4 py-2 text-sm text-dim hover:text-ink">
             Cancel

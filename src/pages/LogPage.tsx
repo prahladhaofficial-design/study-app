@@ -53,6 +53,7 @@ export function LogPage() {
         mode: 'stopwatch',
         subject: draft.subject || null,
         notes: draft.notes,
+        manual: true,
         updatedAt: Date.now(),
       })
     } else if (editing) {
