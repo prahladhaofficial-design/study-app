@@ -5,6 +5,8 @@ export const BRAND = {
   tagline: 'Deep focus, visible progress.',
   supportEmail: 'support@example.com',
   trialDays: 7,
+  // Turn on once Google is enabled under Supabase, Authentication, Sign In / Providers.
+  googleSignIn: false,
   // The public website. Email links from the desktop and phone apps open here.
   siteUrl: 'https://study-app-one-rho.vercel.app',
   // Shown on the legal pages. Must match the name used for payments verification.

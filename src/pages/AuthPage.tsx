@@ -39,7 +39,7 @@ export function AuthPage() {
         </div>
 
         {/* Google's sign-in redirect only returns to the website, so the apps use email for now. */}
-        {!isNativeApp() && (
+        {BRAND.googleSignIn && !isNativeApp() && (
           <>
             <button
               type="button"
