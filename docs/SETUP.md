@@ -18,8 +18,21 @@ Everything here is done in your browser. Each step says exactly where to click.
 
 ## 2. Vercel (the website)
 
-Claude will deploy from this repository and add the two Supabase values as
-environment variables named `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+The Supabase URL and anon key are already in `.env.production`, so Vercel
+needs no environment variables.
+
+1. Go to https://vercel.com/new and choose **Continue with GitHub**.
+2. If `study-app` isn't listed, click **Adjust GitHub App Permissions** (or
+   "Install"), pick the **prahladhaofficial-design** account, allow the
+   `study-app` repository, and save.
+3. Click **Import** next to `study-app`. Vercel detects Vite; leave every
+   setting as it is and click **Deploy**.
+4. Copy the site address Vercel shows (like `study-app-xxxx.vercel.app`).
+5. Back in Supabase, open **Authentication** → **URL Configuration**. Set
+   **Site URL** to that address and add `https://<that address>/**` under
+   **Redirect URLs**. This makes sign-up confirmation emails open the app.
+
+Every merge into `main` redeploys the site automatically.
 
 ## 3. Accounts to create early (approvals take days)
 
