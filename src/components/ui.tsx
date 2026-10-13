@@ -1,4 +1,5 @@
 import clsx from 'clsx'
+import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
@@ -48,5 +49,19 @@ export function Toggle({ checked, onChange, label }: { checked: boolean; onChang
     >
       <span className={clsx('absolute top-0.5 size-5 rounded-full bg-white transition-all', checked ? 'left-[22px]' : 'left-0.5')} />
     </button>
+  )
+}
+
+export function NotFound({ title, back, backLabel }: { title: string; back: string; backLabel: string }) {
+  return (
+    <div className="mx-auto max-w-md py-16">
+      <Card className="flex flex-col items-center gap-3 py-10 text-center">
+        <p className="font-medium">{title}</p>
+        <p className="text-sm text-dim">It may have been deleted, or the link is wrong.</p>
+        <Link to={back} className="mt-2 rounded-xl border border-line px-4 py-2 text-sm text-dim hover:text-ink">
+          {backLabel}
+        </Link>
+      </Card>
+    </div>
   )
 }

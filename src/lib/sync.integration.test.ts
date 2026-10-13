@@ -60,7 +60,7 @@ const settle = () => new Promise((r) => setTimeout(r, 20))
 
 describe('sync engine', async () => {
   const { db } = await import('./db')
-  const { startSync, syncNow, stopSync } = await import('./sync')
+  const { startSync, syncNow, stopSync, signOutCleanup } = await import('./sync')
 
   it('uploads rows that existed before the first sign-in', async () => {
     await db.tasks.add({ id: 't1', title: 'Old task', done: false, subject: null, dueDay: null, createdAt: 1, doneAt: null, updatedAt: 1 })
@@ -98,6 +98,29 @@ describe('sync engine', async () => {
     await syncNow()
     expect((await db.projects.get('p1'))?.name).toBe('Local')
     expect(server.get('projects:p1')?.data?.name).toBe('Local')
+  })
+
+  it('keeps the account data after signing out and back in', async () => {
+    await db.sessions.add({ id: 's1', startedAt: 1, endedAt: 2, durationMs: 60_000, mode: 'stopwatch', subject: null, notes: '', updatedAt: 3 })
+    await settle()
+    expect(await signOutCleanup()).toBe(true)
+    await settle()
+    expect(await db.sessions.count()).toBe(0)
+    expect(await db.outbox.count()).toBe(0)
+
+    await startSync(fakeClient, 'user-a')
+    expect(server.get('sessions:s1')?.deleted).toBe(false)
+    expect(server.get('projects:p1')?.deleted).toBe(false)
+    expect((await db.sessions.get('s1'))?.durationMs).toBe(60_000)
+    stopSync()
+  })
+
+  it('ignores deletes left queued by an earlier sign-out', async () => {
+    await signOutCleanup()
+    await db.outbox.put({ key: 'sessions:s1', kind: 'sessions', id: 's1', at: Date.now() })
+    await startSync(fakeClient, 'user-a')
+    expect(server.get('sessions:s1')?.deleted).toBe(false)
+    expect(await db.sessions.get('s1')).toBeDefined()
     stopSync()
   })
 })
