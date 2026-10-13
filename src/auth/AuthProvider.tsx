@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import { BRAND } from '../config/brand'
 import { evaluateAccess, type AccessInput, type AccessResult } from '../lib/access'
 import { isPreviewMode, supabase } from '../lib/supabase'
+import { signOutCleanup, startSync, stopSync } from '../lib/sync'
 
 interface AuthContextValue {
   loading: boolean
@@ -72,6 +73,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isPreviewMode) void refreshAccess()
   }, [refreshAccess])
 
+  const uid = session?.user.id
+  useEffect(() => {
+    if (!supabase || !uid) return
+    void startSync(supabase, uid)
+    return () => stopSync()
+  }, [uid])
+
   const value = useMemo<AuthContextValue>(
     () => ({
       loading,
@@ -102,6 +110,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return error?.message ?? null
       },
       async signOut() {
+        // Upload pending changes, then clear this account's data from the device.
+        if (!(await signOutCleanup())) {
+          if (!window.confirm("Some changes haven't been backed up yet (you may be offline). Sign out anyway and lose them?")) return
+          await signOutCleanup(true)
+        }
         await supabase?.auth.signOut()
       },
       refreshAccess,

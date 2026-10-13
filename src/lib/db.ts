@@ -110,6 +110,17 @@ export interface Project {
   updatedAt: number
 }
 
+/** A local change waiting to be uploaded. `at` changes on every edit. */
+export interface OutboxEntry {
+  key: string
+  kind: SyncKind
+  id: string
+  at: number
+}
+
+export const SYNC_KINDS = ['sessions', 'decks', 'cards', 'dumps', 'explanations', 'sketches', 'goals', 'tasks', 'moments', 'projects'] as const
+export type SyncKind = (typeof SYNC_KINDS)[number]
+
 export const db = new Dexie('studyapp') as Dexie & {
   sessions: EntityTable<StudySession, 'id'>
   decks: EntityTable<Deck, 'id'>
@@ -121,6 +132,7 @@ export const db = new Dexie('studyapp') as Dexie & {
   tasks: EntityTable<Task, 'id'>
   moments: EntityTable<Moment, 'id'>
   projects: EntityTable<Project, 'id'>
+  outbox: EntityTable<OutboxEntry, 'key'>
 }
 
 db.version(1).stores({
@@ -148,6 +160,43 @@ db.version(3).stores({
   moments: 'id, day, createdAt, updatedAt',
   projects: 'id, name, updatedAt',
 })
+
+db.version(4).stores({
+  sessions: 'id, startedAt, updatedAt',
+  decks: 'id, name, updatedAt',
+  cards: 'id, deckId, due, updatedAt',
+  dumps: 'id, createdAt, updatedAt',
+  explanations: 'id, createdAt, updatedAt',
+  sketches: 'id, createdAt, updatedAt',
+  goals: 'id, updatedAt',
+  tasks: 'id, done, createdAt, updatedAt',
+  moments: 'id, day, createdAt, updatedAt',
+  projects: 'id, name, updatedAt',
+  outbox: 'key, at',
+})
+
+// Every write to a synced table queues the row for upload. Writes made by the
+// sync engine itself are tagged on the transaction and skipped, so downloaded
+// rows don't bounce straight back to the server.
+type TaggedTx = { fromSync?: boolean; on: (event: 'complete', fn: () => void) => void }
+const outboxListeners = new Set<() => void>()
+export const onOutboxChange = (fn: () => void) => {
+  outboxListeners.add(fn)
+  return () => void outboxListeners.delete(fn)
+}
+
+for (const kind of SYNC_KINDS) {
+  const queue = (id: unknown, tx: TaggedTx) => {
+    if (tx.fromSync || typeof id !== 'string') return
+    tx.on('complete', () => {
+      void db.outbox.put({ key: `${kind}:${id}`, kind, id, at: Date.now() }).then(() => outboxListeners.forEach((l) => l()))
+    })
+  }
+  const table = db.table(kind)
+  table.hook('creating', (id, obj, tx) => queue(id ?? (obj as { id?: string }).id, tx as unknown as TaggedTx))
+  table.hook('updating', (_mods, id, _obj, tx) => queue(id, tx as unknown as TaggedTx))
+  table.hook('deleting', (id, _obj, tx) => queue(id, tx as unknown as TaggedTx))
+}
 
 export const newId = () => crypto.randomUUID()
 
