@@ -65,6 +65,51 @@ export interface Sketch {
   updatedAt: number
 }
 
+export interface Goal {
+  id: string
+  period: 'daily' | 'weekly'
+  minutes: number
+  /** Only count sessions with this subject; null counts everything. */
+  subject: string | null
+  createdAt: number
+  updatedAt: number
+}
+
+export interface Task {
+  id: string
+  title: string
+  done: boolean
+  subject: string | null
+  /** Optional due day as a dayKey (YYYY-MM-DD). */
+  dueDay: string | null
+  createdAt: number
+  doneAt: number | null
+  updatedAt: number
+}
+
+export interface Moment {
+  id: string
+  day: string
+  caption: string
+  /** JPEG data URL, resized before saving. */
+  image: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface Project {
+  id: string
+  /** Sessions whose subject matches this name count towards the project. */
+  name: string
+  color: string
+  targetHours: number
+  /** Optional exam or deadline day (YYYY-MM-DD). */
+  deadline: string | null
+  archived: boolean
+  createdAt: number
+  updatedAt: number
+}
+
 export const db = new Dexie('studyapp') as Dexie & {
   sessions: EntityTable<StudySession, 'id'>
   decks: EntityTable<Deck, 'id'>
@@ -72,6 +117,10 @@ export const db = new Dexie('studyapp') as Dexie & {
   dumps: EntityTable<BrainDump, 'id'>
   explanations: EntityTable<Explanation, 'id'>
   sketches: EntityTable<Sketch, 'id'>
+  goals: EntityTable<Goal, 'id'>
+  tasks: EntityTable<Task, 'id'>
+  moments: EntityTable<Moment, 'id'>
+  projects: EntityTable<Project, 'id'>
 }
 
 db.version(1).stores({
@@ -85,6 +134,19 @@ db.version(2).stores({
   dumps: 'id, createdAt, updatedAt',
   explanations: 'id, createdAt, updatedAt',
   sketches: 'id, createdAt, updatedAt',
+})
+
+db.version(3).stores({
+  sessions: 'id, startedAt, updatedAt',
+  decks: 'id, name, updatedAt',
+  cards: 'id, deckId, due, updatedAt',
+  dumps: 'id, createdAt, updatedAt',
+  explanations: 'id, createdAt, updatedAt',
+  sketches: 'id, createdAt, updatedAt',
+  goals: 'id, updatedAt',
+  tasks: 'id, done, createdAt, updatedAt',
+  moments: 'id, day, createdAt, updatedAt',
+  projects: 'id, name, updatedAt',
 })
 
 export const newId = () => crypto.randomUUID()
