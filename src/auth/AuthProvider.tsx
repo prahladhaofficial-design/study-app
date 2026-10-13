@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { Session } from '@supabase/supabase-js'
 import { BRAND } from '../config/brand'
 import { evaluateAccess, type AccessInput, type AccessResult } from '../lib/access'
+import { isNativeApp } from '../lib/platform'
 import { isPreviewMode, supabase } from '../lib/supabase'
 import { signOutCleanup, startSync, stopSync } from '../lib/sync'
 
@@ -97,7 +98,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin },
+          // Confirmation links open the website; the apps have no web address of their own.
+          options: { emailRedirectTo: isNativeApp() ? BRAND.siteUrl : window.location.origin },
         })
         return error?.message ?? null
       },
