@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { isNativeApp } from '../lib/platform'
 import { LandingPage } from '../pages/site/LandingPage'
 import { useAuth } from './AuthProvider'
 
@@ -12,8 +13,8 @@ export function RequireUser() {
   const location = useLocation()
   if (loading) return <Splash />
   if (!session && !preview) {
-    // Signed-out visitors to the home page see the public landing page.
-    if (location.pathname === '/') return <LandingPage />
+    // Signed-out visitors to the website's home page see the public landing page.
+    if (location.pathname === '/' && !isNativeApp()) return <LandingPage />
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
   }
   return <Outlet />

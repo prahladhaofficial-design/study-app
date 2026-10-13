@@ -1,0 +1,49 @@
+name: Phone apps
+
+# Builds an installable Android test app (APK) and checks the iOS app compiles.
+# Store-ready signed builds are added once the store accounts exist.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['android/**', 'ios/**', 'capacitor.config.ts', '.github/workflows/mobile.yml', 'package.json']
+  push:
+    branches: [main]
+    paths: ['android/**', 'ios/**', 'capacitor.config.ts', 'src/**']
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync android
+      - name: Build test APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-test-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync ios
+      - name: Build for the iOS simulator
+        run: xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator -configuration Debug -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
