@@ -1,0 +1,6 @@
+# Supabase settings used when deploying edge functions from GitHub Actions.
+project_id = "xcaioljuutfvujmitwfc"
+
+[functions.dodo-webhook]
+# Dodo can't send a Supabase login token; the function checks Dodo's signature instead.
+verify_jwt = false
