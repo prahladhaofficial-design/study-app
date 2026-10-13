@@ -36,3 +36,9 @@ export function evaluateAccess(input: AccessInput, now: Date): AccessResult {
 export function daysLeft(until: Date, now: Date): number {
   return Math.max(0, Math.ceil((until.getTime() - now.getTime()) / 86_400_000))
 }
+
+/** With several plans on record (an old monthly, then lifetime), any plan that grants access wins. */
+export function bestAccess(trialEndsAt: string | null, subs: Omit<AccessInput, 'trialEndsAt'>[], now: Date): AccessResult {
+  const results = (subs.length ? subs : [{ plan: null, status: null, currentPeriodEnd: null }]).map((s) => evaluateAccess({ trialEndsAt, ...s }, now))
+  return results.find((r) => r.allowed && r.reason === 'lifetime') ?? results.find((r) => r.allowed && r.reason === 'subscription') ?? results.find((r) => r.allowed) ?? results[0]
+}

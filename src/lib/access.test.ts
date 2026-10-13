@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { daysLeft, evaluateAccess } from './access'
+import { daysLeft, evaluateAccess, bestAccess } from './access'
 
 const now = new Date('2026-10-13T12:00:00Z')
 const base = { trialEndsAt: null, plan: null, status: null, currentPeriodEnd: null } as const
@@ -36,5 +36,22 @@ describe('evaluateAccess', () => {
 
   it('counts days left rounding up', () => {
     expect(daysLeft(new Date('2026-10-14T13:00:00Z'), now)).toBe(2)
+  })
+})
+
+describe('bestAccess', () => {
+  const now = new Date('2026-10-13T12:00:00Z')
+  it('prefers lifetime over an older ended subscription', () => {
+    const r = bestAccess(null, [
+      { plan: 'monthly', status: 'expired', currentPeriodEnd: '2026-09-01T00:00:00Z' },
+      { plan: 'lifetime', status: 'active', currentPeriodEnd: null },
+    ], now)
+    expect(r).toMatchObject({ allowed: true, reason: 'lifetime' })
+  })
+  it('falls back to the trial when there are no plans', () => {
+    expect(bestAccess('2026-10-20T00:00:00Z', [], now)).toMatchObject({ allowed: true, reason: 'trial' })
+  })
+  it('reports an ended subscription when nothing grants access', () => {
+    expect(bestAccess('2026-10-01T00:00:00Z', [{ plan: 'yearly', status: 'expired', currentPeriodEnd: '2026-10-01T00:00:00Z' }], now)).toMatchObject({ allowed: false, reason: 'subscription_ended' })
   })
 })

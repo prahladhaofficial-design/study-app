@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { BRAND } from '../config/brand'
-import { evaluateAccess, type AccessInput, type AccessResult } from '../lib/access'
+import { bestAccess, type AccessResult } from '../lib/access'
 import { isNativeApp } from '../lib/platform'
 import { isPreviewMode, supabase } from '../lib/supabase'
 import { signOutCleanup, startSync, stopSync } from '../lib/sync'
@@ -31,23 +31,15 @@ const previewAccess = (): AccessResult => ({
 
 async function loadAccess(userId: string): Promise<AccessResult> {
   if (!supabase) return previewAccess()
-  const [{ data: profile }, { data: sub }] = await Promise.all([
+  const [{ data: profile }, { data: subs }] = await Promise.all([
     supabase.from('profiles').select('trial_ends_at').eq('id', userId).maybeSingle(),
-    supabase
-      .from('subscriptions')
-      .select('plan,status,current_period_end')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+    supabase.from('subscriptions').select('plan,status,current_period_end').eq('user_id', userId).order('created_at', { ascending: false }).limit(10),
   ])
-  const input: AccessInput = {
-    trialEndsAt: profile?.trial_ends_at ?? null,
-    plan: sub?.plan ?? null,
-    status: sub?.status ?? null,
-    currentPeriodEnd: sub?.current_period_end ?? null,
-  }
-  return evaluateAccess(input, new Date())
+  return bestAccess(
+    profile?.trial_ends_at ?? null,
+    (subs ?? []).map((s) => ({ plan: s.plan, status: s.status, currentPeriodEnd: s.current_period_end })),
+    new Date(),
+  )
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -71,7 +63,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    if (!isPreviewMode) void refreshAccess()
+    if (isPreviewMode) return
+    void refreshAccess()
+    // Re-check the plan when the user comes back, for example after paying in the browser.
+    const onVisible = () => document.visibilityState === 'visible' && void refreshAccess()
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [refreshAccess])
 
   const uid = session?.user.id

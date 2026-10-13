@@ -41,10 +41,11 @@ export default function App() {
           <Route path="/refunds" element={<RefundPage />} />
           <Route element={<RequireUser />}>
             <Route path="/upgrade" element={<UpgradePage />} />
-            <Route element={<RequireAccess />}>
-              <Route element={<AppLayout />}>
+            <Route element={<AppLayout />}>
+              {/* Reachable after the trial ends too: billing, unlock after checkout, delete account. */}
+              <Route path="/account" element={<AccountPage />} />
+              <Route element={<RequireAccess />}>
                 <Route index element={<FocusPage />} />
-                <Route path="/account" element={<AccountPage />} />
                 <Route path="/log" element={<LogPage />} />
                 <Route path="/stats" element={<InsightsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
