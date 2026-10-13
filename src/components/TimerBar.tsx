@@ -1,9 +1,10 @@
 import clsx from 'clsx'
 import { Maximize2, Pause, Play, RotateCcw, SkipForward, Square } from 'lucide-react'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BRAND } from '../config/brand'
 import { notify, playAlert } from '../lib/alerts'
-import { saveSession } from '../lib/db'
+import { db, saveSession } from '../lib/db'
 import { advance, initialCycle, PHASE_LABEL, phaseMinutes, shouldAutoStart, type Cycle } from '../lib/pomodoro'
 import { getSettings, useSettings } from '../lib/settings'
 import { formatClock } from '../lib/time'
@@ -11,6 +12,15 @@ import * as T from '../lib/timer'
 
 const PRESETS = [25, 45, 90]
 const MODE_KEY = 'timer.mode'
+const SUBJECT_KEY = 'timer.subject'
+
+function savedSubject(): string {
+  try {
+    return localStorage.getItem(SUBJECT_KEY) ?? ''
+  } catch {
+    return ''
+  }
+}
 
 function savedMode(): T.TimerMode {
   try {
@@ -33,6 +43,22 @@ export function TimerBar() {
   const started = state.sessionStartedAt !== null
   const isBreak = state.mode === 'pomodoro' && cycle.phase !== 'focus'
   const busy = useRef(false)
+  const [subject, setSubject] = useState(savedSubject)
+  // Suggest project names first, then recent subjects.
+  const suggestions = useLiveQuery(async () => {
+    const projects = await db.projects.filter((p) => !p.archived).toArray()
+    const recent = await db.sessions.orderBy('startedAt').reverse().limit(200).toArray()
+    return [...new Set([...projects.map((p) => p.name), ...recent.map((r) => r.subject).filter((x): x is string => !!x)])]
+  }, [], [] as string[])
+
+  function changeSubject(value: string) {
+    setSubject(value)
+    try {
+      localStorage.setItem(SUBJECT_KEY, value)
+    } catch {
+      /* not remembered across visits */
+    }
+  }
 
   // Re-render while running; the time itself always comes from timestamps.
   useEffect(() => {
@@ -55,17 +81,20 @@ export function TimerBar() {
     document.title = running ? `${formatClock(shown)} · ${label}` : BRAND.name
   }, [running, shown, state.mode, cycle.phase])
 
-  const logFocus = useCallback(async (s: T.TimerState, end: number) => {
-    if (!s.sessionStartedAt) return
-    await saveSession({
-      startedAt: s.sessionStartedAt,
-      endedAt: end,
-      durationMs: T.elapsed(s, end),
-      mode: s.mode,
-      subject: null,
-      notes: '',
-    })
-  }, [])
+  const logFocus = useCallback(
+    async (s: T.TimerState, end: number) => {
+      if (!s.sessionStartedAt) return
+      await saveSession({
+        startedAt: s.sessionStartedAt,
+        endedAt: end,
+        durationMs: T.elapsed(s, end),
+        mode: s.mode,
+        subject: subject.trim() || null,
+        notes: '',
+      })
+    },
+    [subject],
+  )
 
   /** Ends the current block. `completed` is true when a countdown reached zero. */
   const finish = useCallback(
@@ -156,6 +185,19 @@ export function TimerBar() {
           <option value="countdown">Countdown</option>
           <option value="pomodoro">Pomodoro</option>
         </select>
+        <input
+          list="timer-subjects"
+          value={subject}
+          onChange={(e) => changeSubject(e.target.value)}
+          placeholder="Subject"
+          aria-label="Subject for this session"
+          className="w-28 rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm sm:w-32"
+        />
+        <datalist id="timer-subjects">
+          {suggestions.map((x) => (
+            <option key={x} value={x} />
+          ))}
+        </datalist>
         {state.mode === 'countdown' && !started && (
           <div className="flex gap-1">
             {PRESETS.map((m) => (
