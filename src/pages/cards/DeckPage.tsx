@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowLeft, Pencil, Trash2, Upload } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Card, PageHeader } from '../../components/ui'
+import { Card, NotFound, PageHeader } from '../../components/ui'
 import { db, type Card as CardRow } from '../../lib/db'
 import { addCard, deleteDeck, editCard, parseImport, renameDeck } from '../../lib/decks'
 
@@ -15,7 +15,8 @@ function dueLabel(due: number, now: number): string {
 export function DeckPage() {
   const { deckId = '' } = useParams()
   const navigate = useNavigate()
-  const deck = useLiveQuery(() => db.decks.get(deckId), [deckId])
+  // undefined while loading, null when the deck doesn't exist.
+  const deck = useLiveQuery(async () => (await db.decks.get(deckId)) ?? null, [deckId])
   const cards = useLiveQuery(() => db.cards.where('deckId').equals(deckId).sortBy('createdAt'), [deckId], [])
   const [front, setFront] = useState('')
   const [back, setBack] = useState('')
@@ -25,6 +26,7 @@ export function DeckPage() {
   const due = cards.filter((c) => c.due <= now).length
 
   if (deck === undefined) return null
+  if (deck === null) return <NotFound title="Deck not found" back="/cards" backLabel="Back to flashcards" />
 
   async function submit(e: FormEvent) {
     e.preventDefault()

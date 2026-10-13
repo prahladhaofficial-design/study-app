@@ -96,7 +96,10 @@ function write(key: string, value: string | null) {
 }
 
 async function wipeLocal() {
-  await db.transaction('rw', [...SYNC_KINDS.map((k) => db.table(k)), db.outbox], async () => {
+  await db.transaction('rw', [...SYNC_KINDS.map((k) => db.table(k)), db.outbox], async (tx) => {
+    // Removing this device's copy must not queue deletes for upload, or the
+    // next sign-in would erase the account's data on the server too.
+    ;(tx as unknown as { fromSync: boolean }).fromSync = true
     for (const k of SYNC_KINDS) await db.table(k).clear()
     await db.outbox.clear()
   })
@@ -105,6 +108,9 @@ async function wipeLocal() {
 /** Queues every local row for upload, used the first time an account syncs on this device. */
 async function enqueueAll() {
   const now = Date.now()
+  // Entries left from before this account (including deletes queued by older
+  // versions when signing out) belong to no one, so start from what is here.
+  await db.outbox.clear()
   for (const kind of SYNC_KINDS) {
     const rows = (await db.table(kind).toArray()) as { id: string; updatedAt?: number }[]
     await db.outbox.bulkPut(rows.map((r) => ({ key: `${kind}:${r.id}`, kind, id: r.id, at: r.updatedAt ?? now })))

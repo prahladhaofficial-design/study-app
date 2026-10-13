@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowLeft, PartyPopper } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { NotFound } from '../../components/ui'
 import { db, type Card } from '../../lib/db'
 import { gradeCard } from '../../lib/decks'
 import { previewLabel, type Grade } from '../../lib/srs'
@@ -15,7 +16,8 @@ const GRADES: { grade: Grade; label: string; key: string; tone: string }[] = [
 
 export function ReviewPage() {
   const { deckId = '' } = useParams()
-  const deck = useLiveQuery(() => db.decks.get(deckId), [deckId])
+  // undefined while loading, null when the deck doesn't exist.
+  const deck = useLiveQuery(async () => (await db.decks.get(deckId)) ?? null, [deckId])
   // Snapshot the due queue once so graded cards don't reshuffle mid-session.
   const [queue, setQueue] = useState<Card[] | null>(null)
   const [revealed, setRevealed] = useState(false)
@@ -57,6 +59,7 @@ export function ReviewPage() {
     return () => window.removeEventListener('keydown', onKey)
   })
 
+  if (deck === null) return <NotFound title="Deck not found" back="/cards" backLabel="Back to flashcards" />
   if (!queue || deck === undefined) return null
   const now = Date.now()
 
