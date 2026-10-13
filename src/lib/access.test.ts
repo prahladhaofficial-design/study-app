@@ -1,0 +1,40 @@
+import { describe, expect, it } from 'vitest'
+import { daysLeft, evaluateAccess } from './access'
+
+const now = new Date('2026-10-13T12:00:00Z')
+const base = { trialEndsAt: null, plan: null, status: null, currentPeriodEnd: null } as const
+
+describe('evaluateAccess', () => {
+  it('allows an active trial', () => {
+    const r = evaluateAccess({ ...base, trialEndsAt: '2026-10-16T12:00:00Z' }, now)
+    expect(r).toMatchObject({ allowed: true, reason: 'trial' })
+  })
+
+  it('blocks an ended trial', () => {
+    expect(evaluateAccess({ ...base, trialEndsAt: '2026-10-01T00:00:00Z' }, now)).toMatchObject({
+      allowed: false,
+      reason: 'trial_ended',
+    })
+  })
+
+  it('allows lifetime forever', () => {
+    expect(evaluateAccess({ ...base, plan: 'lifetime', status: 'active' }, now).allowed).toBe(true)
+  })
+
+  it('keeps a canceled subscription until its period ends', () => {
+    const r = evaluateAccess(
+      { ...base, plan: 'monthly', status: 'canceled', currentPeriodEnd: '2026-10-20T00:00:00Z' },
+      now,
+    )
+    expect(r).toMatchObject({ allowed: true, reason: 'subscription' })
+    const after = evaluateAccess(
+      { ...base, plan: 'monthly', status: 'canceled', currentPeriodEnd: '2026-10-01T00:00:00Z' },
+      now,
+    )
+    expect(after).toMatchObject({ allowed: false, reason: 'subscription_ended' })
+  })
+
+  it('counts days left rounding up', () => {
+    expect(daysLeft(new Date('2026-10-14T13:00:00Z'), now)).toBe(2)
+  })
+})
