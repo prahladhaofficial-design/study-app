@@ -119,7 +119,7 @@ export function ProjectsPage() {
                         {st.lastStudied && ` · last ${new Date(st.lastStudied).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`}
                       </p>
                     </div>
-                    <div className="flex opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+                    <div className="flex opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 focus:opacity-100 focus-within:opacity-100">
                       <button
                         type="button"
                         aria-label="Edit project"

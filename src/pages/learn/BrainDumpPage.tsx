@@ -111,7 +111,7 @@ export function BrainDumpPage() {
                     </button>
                     <span className="flex items-center gap-2">
                       {d.coverage !== null && <span className="font-mono text-xs text-accent">{Math.round(d.coverage * 100)}%</span>}
-                      <button type="button" aria-label="Delete" onClick={() => void db.dumps.delete(d.id)} className="text-faint opacity-0 hover:text-danger group-hover:opacity-100">
+                      <button type="button" aria-label="Delete" onClick={() => window.confirm('Delete this brain dump?') && void db.dumps.delete(d.id)} className="text-faint opacity-0 hover:text-danger group-hover:opacity-100 pointer-coarse:opacity-100 focus:opacity-100">
                         <Trash2 size={13} />
                       </button>
                     </span>

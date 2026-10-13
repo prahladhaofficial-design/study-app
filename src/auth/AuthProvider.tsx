@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { Session } from '@supabase/supabase-js'
 import { BRAND } from '../config/brand'
 import { bestAccess, type AccessResult } from '../lib/access'
+import { friendlyAuthError } from '../lib/authErrors'
 import { isNativeApp } from '../lib/platform'
 import { isPreviewMode, supabase } from '../lib/supabase'
 import { signOutCleanup, startSync, stopSync } from '../lib/sync'
@@ -13,7 +14,12 @@ interface AuthContextValue {
   access: AccessResult | null
   preview: boolean
   signIn: (email: string, password: string) => Promise<string | null>
-  signUp: (email: string, password: string) => Promise<string | null>
+  /** `existing` is true when the email already has an account (no email is sent then). */
+  signUp: (email: string, password: string) => Promise<{ error: string | null; existing: boolean }>
+  sendPasswordReset: (email: string) => Promise<string | null>
+  updatePassword: (password: string) => Promise<string | null>
+  /** True after opening a password reset link, until a new password is saved. */
+  recovering: boolean
   signInWithGoogle: () => Promise<string | null>
   signOut: () => Promise<void>
   refreshAccess: () => Promise<void>
@@ -46,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(!isPreviewMode)
   const [session, setSession] = useState<Session | null>(null)
   const [access, setAccess] = useState<AccessResult | null>(isPreviewMode ? previewAccess() : null)
+  const [recovering, setRecovering] = useState(false)
 
   const refreshAccess = useCallback(async () => {
     const uid = session?.user.id
@@ -58,7 +65,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session)
       setLoading(false)
     })
-    const { data } = supabase.auth.onAuthStateChange((_event, s) => setSession(s))
+    const { data } = supabase.auth.onAuthStateChange((event, s) => {
+      setSession(s)
+      if (event === 'PASSWORD_RECOVERY') setRecovering(true)
+    })
     return () => data.subscription.unsubscribe()
   }, [])
 
@@ -88,17 +98,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async signIn(email, password) {
         if (!supabase) return null
         const { error } = await supabase.auth.signInWithPassword({ email, password })
-        return error?.message ?? null
+        return error ? friendlyAuthError(error.message) : null
       },
       async signUp(email, password) {
-        if (!supabase) return null
-        const { error } = await supabase.auth.signUp({
+        if (!supabase) return { error: null, existing: false }
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           // Confirmation links open the website; the apps have no web address of their own.
           options: { emailRedirectTo: isNativeApp() ? BRAND.siteUrl : window.location.origin },
         })
-        return error?.message ?? null
+        // Supabase answers an already-registered email with a user that has no identities.
+        const existing = !error && !!data.user && (data.user.identities?.length ?? 1) === 0
+        return { error: error ? friendlyAuthError(error.message) : null, existing }
+      },
+      async sendPasswordReset(email) {
+        if (!supabase) return null
+        const site = isNativeApp() ? BRAND.siteUrl : window.location.origin
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${site}/reset` })
+        return error ? friendlyAuthError(error.message) : null
+      },
+      async updatePassword(password) {
+        if (!supabase) return null
+        const { error } = await supabase.auth.updateUser({ password })
+        if (error) return friendlyAuthError(error.message)
+        setRecovering(false)
+        return null
       },
       async signInWithGoogle() {
         if (!supabase) return null
@@ -117,8 +142,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await supabase?.auth.signOut()
       },
       refreshAccess,
+      recovering,
     }),
-    [loading, session, access, refreshAccess],
+    [loading, session, access, refreshAccess, recovering],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

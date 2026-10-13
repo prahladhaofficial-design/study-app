@@ -72,12 +72,16 @@ export async function fetchCountries(since: Date): Promise<CountryRow[]> {
 export interface ArenaProfile {
   display_name: string | null
   country_code: string | null
+  /** Left off the leaderboard and country totals. */
+  arena_hidden: boolean
 }
 
 export async function fetchProfile(uid: string): Promise<ArenaProfile | null> {
   if (!supabase) return null
-  const { data } = await supabase.from('profiles').select('display_name,country_code').eq('id', uid).maybeSingle()
-  return (data as ArenaProfile | null) ?? null
+  // '*' keeps this working on a database that doesn't have arena_hidden yet.
+  const { data } = await supabase.from('profiles').select('*').eq('id', uid).maybeSingle()
+  if (!data) return null
+  return { display_name: data.display_name ?? null, country_code: data.country_code ?? null, arena_hidden: data.arena_hidden === true }
 }
 
 export async function saveProfile(uid: string, p: ArenaProfile): Promise<string | null> {

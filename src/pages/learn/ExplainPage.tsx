@@ -78,7 +78,7 @@ export function ExplainPage() {
                   >
                     {e.topic || 'Untitled'}
                   </button>
-                  <button type="button" aria-label="Delete" onClick={() => void remove(e.id)} className="p-1 text-faint opacity-0 hover:text-danger group-hover:opacity-100">
+                  <button type="button" aria-label="Delete" onClick={() => void remove(e.id)} className="p-1 text-faint opacity-0 hover:text-danger group-hover:opacity-100 pointer-coarse:opacity-100 focus:opacity-100">
                     <Trash2 size={13} />
                   </button>
                 </li>

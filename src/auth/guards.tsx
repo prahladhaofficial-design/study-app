@@ -9,9 +9,11 @@ function Splash() {
 
 /** Requires a signed-in user (always true in preview mode). */
 export function RequireUser() {
-  const { loading, session, preview } = useAuth()
+  const { loading, session, preview, recovering } = useAuth()
   const location = useLocation()
   if (loading) return <Splash />
+  // A password reset link signs the user in; send them to choose a new password first.
+  if (recovering) return <Navigate to="/reset" replace />
   if (!session && !preview) {
     // Signed-out visitors to the website's home page see the public landing page.
     if (location.pathname === '/' && !isNativeApp()) return <LandingPage />

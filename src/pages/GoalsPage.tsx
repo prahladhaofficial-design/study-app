@@ -102,7 +102,7 @@ export function GoalsPage() {
                         {formatDuration(g.minutes * 60_000)} {g.subject ? `of ${g.subject}` : 'of focus'}
                       </p>
                     </div>
-                    <button type="button" aria-label="Delete goal" onClick={() => void remove(g.id)} className="p-1 text-faint opacity-0 hover:text-danger group-hover:opacity-100 focus:opacity-100">
+                    <button type="button" aria-label="Delete goal" onClick={() => void remove(g.id)} className="p-1 text-faint opacity-0 hover:text-danger group-hover:opacity-100 pointer-coarse:opacity-100 focus:opacity-100">
                       <Trash2 size={14} />
                     </button>
                   </div>

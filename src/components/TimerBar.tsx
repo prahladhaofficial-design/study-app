@@ -1,49 +1,70 @@
 import clsx from 'clsx'
 import { Maximize2, Pause, Play, RotateCcw, SkipForward, Square } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { BRAND } from '../config/brand'
-import { notify, playAlert } from '../lib/alerts'
-import { db, saveSession } from '../lib/db'
-import { advance, initialCycle, PHASE_LABEL, phaseMinutes, shouldAutoStart, type Cycle } from '../lib/pomodoro'
-import { getSettings, useSettings } from '../lib/settings'
+import { db } from '../lib/db'
+import { PHASE_LABEL } from '../lib/pomodoro'
+import { useSettings } from '../lib/settings'
 import { formatClock } from '../lib/time'
 import * as T from '../lib/timer'
+import * as Timer from '../lib/timerStore'
 
 const PRESETS = [25, 45, 90]
-const MODE_KEY = 'timer.mode'
-const SUBJECT_KEY = 'timer.subject'
 
-function savedSubject(): string {
-  try {
-    return localStorage.getItem(SUBJECT_KEY) ?? ''
-  } catch {
-    return ''
-  }
+/** Re-renders a few times a second while the timer runs. The time itself always comes from timestamps. */
+export function useNow(running: boolean): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!running) return
+    setNow(Date.now())
+    const id = window.setInterval(() => setNow(Date.now()), 250)
+    return () => window.clearInterval(id)
+  }, [running])
+  return now
 }
 
-function savedMode(): T.TimerMode {
-  try {
-    const m = localStorage.getItem(MODE_KEY)
-    return m === 'countdown' || m === 'pomodoro' ? m : 'stopwatch'
-  } catch {
-    return 'stopwatch'
-  }
+/**
+ * Runs once for the whole app: finishes countdowns on time on any page,
+ * keeps the tab title showing the clock, and follows edited pomodoro lengths.
+ */
+export function TimerEngine() {
+  const { state, cycle } = Timer.useTimer()
+  const settings = useSettings()
+  const running = state.runningSince !== null
+  const now = useNow(running)
+  const shown = T.display(state, now)
+
+  useEffect(() => {
+    Timer.tick(now)
+  }, [now])
+
+  // A countdown that ran out while the app was closed is saved on the next open.
+  useEffect(() => {
+    Timer.tick()
+  }, [])
+
+  useEffect(() => {
+    Timer.syncIdlePomodoro()
+  }, [settings, cycle.phase, state.mode, state.sessionStartedAt])
+
+  useEffect(() => {
+    const label = state.mode === 'pomodoro' ? PHASE_LABEL[cycle.phase] : 'Focus'
+    document.title = running ? `${formatClock(shown)} · ${label}` : BRAND.name
+  }, [running, shown, state.mode, cycle.phase])
+
+  return null
 }
 
 export function TimerBar() {
   const settings = useSettings()
-  const [cycle, setCycle] = useState<Cycle>(initialCycle)
-  const [state, setState] = useState(() => {
-    const mode = savedMode()
-    return T.initialTimer(mode, (mode === 'pomodoro' ? getSettings().focusMin : 25) * 60_000)
-  })
-  const [now, setNow] = useState(() => Date.now())
+  const timer = Timer.useTimer()
+  const { state, cycle, subject } = timer
   const running = state.runningSince !== null
   const started = state.sessionStartedAt !== null
-  const isBreak = state.mode === 'pomodoro' && cycle.phase !== 'focus'
-  const busy = useRef(false)
-  const [subject, setSubject] = useState(savedSubject)
+  const isBreak = Timer.isBreak(timer)
+  const now = useNow(running)
   // Suggest project names first, then recent subjects.
   const suggestions = useLiveQuery(async () => {
     const projects = await db.projects.filter((p) => !p.archived).toArray()
@@ -51,120 +72,22 @@ export function TimerBar() {
     return [...new Set([...projects.map((p) => p.name), ...recent.map((r) => r.subject).filter((x): x is string => !!x)])]
   }, [], [] as string[])
 
-  function changeSubject(value: string) {
-    setSubject(value)
-    try {
-      localStorage.setItem(SUBJECT_KEY, value)
-    } catch {
-      /* not remembered across visits */
-    }
-  }
-
-  // Re-render while running; the time itself always comes from timestamps.
-  useEffect(() => {
-    if (!running) return
-    const id = window.setInterval(() => setNow(Date.now()), 250)
-    return () => window.clearInterval(id)
-  }, [running])
-
-  // Keep an idle pomodoro in step with edited durations.
-  useEffect(() => {
-    if (state.mode !== 'pomodoro' || started) return
-    const target = phaseMinutes(cycle.phase, settings) * 60_000
-    if (target !== state.targetMs) setState((s) => T.setTarget(s, target))
-  }, [settings, cycle.phase, state.mode, state.targetMs, started])
-
   const shown = T.display(state, now)
-
-  useEffect(() => {
-    const label = state.mode === 'pomodoro' ? PHASE_LABEL[cycle.phase] : 'Focus'
-    document.title = running ? `${formatClock(shown)} · ${label}` : BRAND.name
-  }, [running, shown, state.mode, cycle.phase])
-
-  const logFocus = useCallback(
-    async (s: T.TimerState, end: number) => {
-      if (!s.sessionStartedAt) return
-      await saveSession({
-        startedAt: s.sessionStartedAt,
-        endedAt: end,
-        durationMs: T.elapsed(s, end),
-        mode: s.mode,
-        subject: subject.trim() || null,
-        notes: '',
-      })
-    },
-    [subject],
-  )
-
-  /** Ends the current block. `completed` is true when a countdown reached zero. */
-  const finish = useCallback(
-    async (completed: boolean) => {
-      if (busy.current) return
-      busy.current = true
-      const end = Date.now()
-      const s = getSettings()
-      if (!isBreak) await logFocus(state, end)
-
-      if (state.mode === 'pomodoro') {
-        const next = completed ? advance(cycle, s) : cycle
-        if (completed) {
-          playAlert()
-          notify(next.phase === 'focus' ? 'Break over' : 'Focus block done', next.phase === 'focus' ? 'Time to focus again.' : `${PHASE_LABEL[next.phase]} time.`)
-        }
-        setCycle(next)
-        const fresh = T.initialTimer('pomodoro', phaseMinutes(next.phase, s) * 60_000)
-        setState(completed && shouldAutoStart(next.phase, s) ? T.start(fresh, end) : fresh)
-      } else {
-        if (completed) {
-          playAlert()
-          notify('Session complete', 'Nice work. Your session was saved.')
-        }
-        setState(T.reset(state))
-      }
-      busy.current = false
-    },
-    [state, cycle, isBreak, logFocus],
-  )
-
-  useEffect(() => {
-    if (running && T.isFinished(state, now)) void finish(true)
-  }, [now, running, state, finish])
-
-  const toggle = useCallback(
-    () => setState((s) => (s.runningSince === null ? T.start(s, Date.now()) : T.pause(s, Date.now()))),
-    [],
-  )
-
-  function changeMode(mode: T.TimerMode) {
-    try {
-      localStorage.setItem(MODE_KEY, mode)
-    } catch {
-      /* not remembered across visits */
-    }
-    setCycle(initialCycle)
-    setState(T.setMode(state, mode, (mode === 'pomodoro' ? settings.focusMin : 25) * 60_000))
-  }
-
-  function skipPhase() {
-    const next = advance(cycle, settings)
-    setCycle(next)
-    setState(T.initialTimer('pomodoro', phaseMinutes(next.phase, settings) * 60_000))
-  }
 
   // Keyboard: Space start/pause, Escape finishes and saves.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if ((e.target as HTMLElement).closest('input, textarea, select, [contenteditable="true"]')) return
+      if ((e.target as HTMLElement).closest('input, textarea, select, button, [contenteditable="true"]')) return
       if (e.code === 'Space') {
         e.preventDefault()
-        toggle()
+        Timer.toggle()
       } else if (e.key === 'Escape' && started) {
-        void finish(false)
+        void Timer.finish(false)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [toggle, finish, started])
+  }, [started])
 
   return (
     <div
@@ -178,7 +101,7 @@ export function TimerBar() {
           aria-label="Timer mode"
           value={state.mode}
           disabled={started}
-          onChange={(e) => changeMode(e.target.value as T.TimerMode)}
+          onChange={(e) => Timer.changeMode(e.target.value as T.TimerMode)}
           className="rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-ink disabled:opacity-50"
         >
           <option value="stopwatch">Stopwatch</option>
@@ -188,7 +111,7 @@ export function TimerBar() {
         <input
           list="timer-subjects"
           value={subject}
-          onChange={(e) => changeSubject(e.target.value)}
+          onChange={(e) => Timer.setSubject(e.target.value)}
           placeholder="Subject"
           aria-label="Subject for this session"
           className="w-28 rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm sm:w-32"
@@ -204,7 +127,7 @@ export function TimerBar() {
               <button
                 key={m}
                 type="button"
-                onClick={() => setState(T.setTarget(state, m * 60_000))}
+                onClick={() => Timer.setTarget(m * 60_000)}
                 className={clsx(
                   'rounded-md px-2 py-1 text-xs',
                   state.targetMs === m * 60_000 ? 'bg-accent text-accent-ink' : 'bg-surface-2 text-dim hover:text-ink',
@@ -232,20 +155,20 @@ export function TimerBar() {
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={toggle}
+          onClick={() => Timer.toggle()}
           aria-label={running ? 'Pause' : 'Start'}
           className={clsx('grid size-12 place-items-center rounded-xl hover:opacity-90', isBreak ? 'bg-warm text-black' : 'bg-accent text-accent-ink')}
         >
           {running ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
         </button>
         {state.mode === 'pomodoro' ? (
-          <button type="button" onClick={skipPhase} aria-label="Skip to next phase" className="grid size-10 place-items-center rounded-xl border border-line text-dim hover:text-ink">
+          <button type="button" onClick={() => Timer.skipPhase()} aria-label="Skip to next phase" className="grid size-10 place-items-center rounded-xl border border-line text-dim hover:text-ink">
             <SkipForward size={16} />
           </button>
         ) : (
           <button
             type="button"
-            onClick={() => void finish(false)}
+            onClick={() => void Timer.finish(false)}
             disabled={!started}
             aria-label="Finish and save session"
             className="grid size-10 place-items-center rounded-xl border border-line text-dim hover:text-danger disabled:opacity-30"
@@ -255,7 +178,7 @@ export function TimerBar() {
         )}
         <button
           type="button"
-          onClick={() => setState(T.reset(state))}
+          onClick={() => Timer.discard()}
           disabled={!started}
           aria-label="Discard session"
           className="grid size-10 place-items-center rounded-xl border border-line text-dim hover:text-ink disabled:opacity-30"
@@ -271,6 +194,27 @@ export function TimerBar() {
           <Maximize2 size={16} />
         </button>
       </div>
+    </div>
+  )
+}
+
+/** A small clock in the top bar so a running session stays visible on every other page. */
+export function MiniTimer() {
+  const timer = Timer.useTimer()
+  const { state, cycle } = timer
+  const running = state.runningSince !== null
+  const now = useNow(running)
+  if (state.sessionStartedAt === null) return null
+  const label = state.mode === 'pomodoro' ? PHASE_LABEL[cycle.phase] : running ? 'Focusing' : 'Paused'
+  return (
+    <div className={clsx('flex items-center gap-1 rounded-full border bg-surface py-1 pl-3 pr-1', Timer.isBreak(timer) ? 'border-warm/50' : 'border-accent/50')}>
+      <Link to="/" className="flex items-baseline gap-2" aria-label="Open the timer">
+        <span className="hidden text-xs text-dim sm:inline">{label}</span>
+        <span className="font-mono text-sm font-semibold tabular-nums">{formatClock(T.display(state, now))}</span>
+      </Link>
+      <button type="button" onClick={() => Timer.toggle()} aria-label={running ? 'Pause' : 'Resume'} className="grid size-8 place-items-center rounded-full text-dim hover:text-ink">
+        {running ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
+      </button>
     </div>
   )
 }

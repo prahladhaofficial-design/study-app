@@ -2,6 +2,7 @@ import clsx from 'clsx'
 import { X } from 'lucide-react'
 import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
+import { TimerEngine } from '../components/TimerBar'
 import { Sidebar } from '../components/Sidebar'
 import { TopBar } from '../components/TopBar'
 
@@ -11,6 +12,7 @@ export function AppLayout() {
 
   return (
     <div className="flex h-full">
+      <TimerEngine />
       <aside className={clsx('hidden shrink-0 border-r border-line bg-surface transition-[width] md:block', collapsed ? 'w-[72px]' : 'w-60')}>
         <Sidebar collapsed={collapsed} />
       </aside>

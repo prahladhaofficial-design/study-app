@@ -208,7 +208,7 @@ export function SketchPage() {
                   <img src={s.image} alt="" className="aspect-[8/5] w-full object-cover" />
                   <p className="truncate bg-surface px-3 py-2 text-xs">{s.title}</p>
                 </button>
-                <button type="button" aria-label="Delete sketch" onClick={() => void remove(s.id)} className="absolute right-2 top-2 rounded-lg bg-black/60 p-1.5 text-white opacity-0 group-hover:opacity-100">
+                <button type="button" aria-label="Delete sketch" onClick={() => void remove(s.id)} className="absolute right-2 top-2 rounded-lg bg-black/60 p-1.5 text-white opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 focus:opacity-100">
                   <Trash2 size={13} />
                 </button>
               </li>

@@ -11,6 +11,8 @@ export interface StudySession {
   mode: 'stopwatch' | 'countdown' | 'pomodoro'
   subject: string | null
   notes: string
+  /** Typed in by hand rather than timed. Kept out of the Arena. */
+  manual?: boolean
   updatedAt: number
 }
 
@@ -203,10 +205,11 @@ export const newId = () => crypto.randomUUID()
 /** Sessions shorter than this are discarded as accidental taps. */
 export const MIN_SESSION_MS = 60_000
 
-export async function saveSession(s: Omit<StudySession, 'id' | 'updatedAt'>): Promise<StudySession | null> {
+/** Saves a session. A fixed `id` makes saving idempotent, so two tabs finishing the same timer store it once. */
+export async function saveSession(s: Omit<StudySession, 'id' | 'updatedAt'>, id: string = crypto.randomUUID()): Promise<StudySession | null> {
   if (s.durationMs < MIN_SESSION_MS) return null
-  const row: StudySession = { ...s, id: crypto.randomUUID(), updatedAt: Date.now() }
-  await db.sessions.add(row)
+  const row: StudySession = { ...s, id, updatedAt: Date.now() }
+  await db.sessions.put(row)
   return row
 }
 
@@ -214,6 +217,8 @@ export async function updateSession(id: string, patch: Partial<Pick<StudySession
   const row = await db.sessions.get(id)
   if (!row) return
   const next = { ...row, ...patch }
+  // Changing when or how long a timed session ran makes it a hand-entered one.
+  if (next.durationMs !== row.durationMs || next.startedAt !== row.startedAt) next.manual = true
   next.endedAt = next.startedAt + next.durationMs
   await db.sessions.put({ ...next, updatedAt: Date.now() })
 }

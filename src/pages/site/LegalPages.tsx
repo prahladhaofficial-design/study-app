@@ -142,10 +142,10 @@ export function PrivacyPage() {
             <b className="text-ink">Account details:</b> your email address, and your name and profile picture if you sign in with Google.
           </>,
           <>
-            <b className="text-ink">Study data you create:</b> focus sessions, subjects, notes, flashcards, tasks, goals, projects, sketches and images you add.
+            <b className="text-ink">Study data you create:</b> focus sessions, subjects, notes, flashcards, tasks, goals, projects, sketches, and photos you add to Moments. All of it is backed up to our cloud database so it appears on every device you sign in on. Only you can see it.
           </>,
           <>
-            <b className="text-ink">Arena profile:</b> the display name and country you choose if you join the leaderboard.
+            <b className="text-ink">Arena profile:</b> the display name and country you choose if you join the leaderboard. You can change them or hide yourself at any time.
           </>,
           <>
             <b className="text-ink">Plan status:</b> which plan you have and when it renews. Payment details are collected by {PAYMENTS}, not by us.

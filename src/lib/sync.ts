@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { clearTimer } from './timerStore'
 import { db, onOutboxChange, SYNC_KINDS, type OutboxEntry, type SyncKind } from './db'
 
 // Two-way sync between the local database and Supabase's sync_rows table.
@@ -257,6 +258,7 @@ export async function signOutCleanup(force = false): Promise<boolean> {
   const owner = read(OWNER_KEY)
   stopSync()
   await wipeLocal()
+  clearTimer()
   if (owner) write(cursorKey(owner), null)
   write(OWNER_KEY, null)
   return true
