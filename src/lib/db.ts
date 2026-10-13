@@ -31,3 +31,15 @@ export async function saveSession(s: Omit<StudySession, 'id' | 'updatedAt'>): Pr
   await db.sessions.add(row)
   return row
 }
+
+export async function updateSession(id: string, patch: Partial<Pick<StudySession, 'subject' | 'notes' | 'startedAt' | 'durationMs'>>): Promise<void> {
+  const row = await db.sessions.get(id)
+  if (!row) return
+  const next = { ...row, ...patch }
+  next.endedAt = next.startedAt + next.durationMs
+  await db.sessions.put({ ...next, updatedAt: Date.now() })
+}
+
+export async function deleteSession(id: string): Promise<void> {
+  await db.sessions.delete(id)
+}
