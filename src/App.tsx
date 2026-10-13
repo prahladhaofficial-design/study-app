@@ -4,6 +4,7 @@ import { RequireAccess, RequireUser } from './auth/guards'
 import { ALL_NAV } from './components/nav'
 import { AppLayout } from './layouts/AppLayout'
 import { AccountPage } from './pages/AccountPage'
+import { ArenaPage } from './pages/ArenaPage'
 import { AuthPage } from './pages/AuthPage'
 import { ComingSoon } from './pages/ComingSoon'
 import { FocusPage } from './pages/FocusPage'
@@ -24,7 +25,7 @@ import { SoundsPage } from './pages/SoundsPage'
 import { TasksPage } from './pages/TasksPage'
 import { UpgradePage } from './pages/UpgradePage'
 
-const BUILT = new Set(['/', '/account', '/log', '/stats', '/settings', '/cards', '/recall', '/brain-dump', '/explain', '/sketch', '/goals', '/sounds', '/tasks', '/moments', '/projects'])
+const BUILT = new Set(['/', '/account', '/log', '/stats', '/settings', '/cards', '/recall', '/brain-dump', '/explain', '/sketch', '/goals', '/sounds', '/tasks', '/moments', '/projects', '/arena'])
 
 export default function App() {
   return (
@@ -56,7 +57,7 @@ export default function App() {
                 {ALL_NAV.filter((n) => !BUILT.has(n.to)).map((n) => (
                   <Route key={n.to} path={n.to} element={<ComingSoon path={n.to} />} />
                 ))}
-                <Route path="/arena" element={<ComingSoon path="/arena" />} />
+                <Route path="/arena" element={<ArenaPage />} />
                 <Route path="*" element={<ComingSoon path="" />} />
               </Route>
             </Route>

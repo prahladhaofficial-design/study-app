@@ -14,6 +14,7 @@ import {
   ScrollText,
   Settings,
   Sparkles,
+  Trophy,
   UserRound,
   type LucideIcon,
 } from 'lucide-react'
@@ -32,6 +33,7 @@ export const NAV_MAIN: NavItem[] = [
   { to: '/', label: 'Focus', icon: LayoutDashboard, blurb: 'Timer and your year at a glance.', day: 1 },
   { to: '/log', label: 'Log', icon: ScrollText, blurb: 'Every session with notes, subjects and images.', day: 2 },
   { to: '/stats', label: 'Insights', icon: BarChart3, blurb: 'Trends, rhythm, streaks and best days.', day: 2 },
+  { to: '/arena', label: 'Arena', icon: Trophy, blurb: 'Leaderboards and country totals.', day: 5 },
   { to: '/goals', label: 'Goals', icon: CalendarCheck2, blurb: 'Daily and weekly targets with progress.', day: 4 },
   { to: '/sounds', label: 'Sounds', icon: Headphones, blurb: 'Ambient soundscapes for deep work.', day: 4 },
   { to: '/tasks', label: 'Tasks', icon: ListChecks, blurb: 'A lightweight to-do list tied to sessions.', day: 4 },
