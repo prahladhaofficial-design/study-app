@@ -1,0 +1,119 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import type { Session } from '@supabase/supabase-js'
+import { BRAND } from '../config/brand'
+import { evaluateAccess, type AccessInput, type AccessResult } from '../lib/access'
+import { isPreviewMode, supabase } from '../lib/supabase'
+
+interface AuthContextValue {
+  loading: boolean
+  session: Session | null
+  email: string | null
+  access: AccessResult | null
+  preview: boolean
+  signIn: (email: string, password: string) => Promise<string | null>
+  signUp: (email: string, password: string) => Promise<string | null>
+  signInWithGoogle: () => Promise<string | null>
+  signOut: () => Promise<void>
+  refreshAccess: () => Promise<void>
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null)
+
+// In preview mode (no Supabase keys) we pretend the visitor is mid-trial so
+// every screen can be explored without a backend.
+const previewAccess = (): AccessResult => ({
+  allowed: true,
+  reason: 'trial',
+  until: new Date(Date.now() + BRAND.trialDays * 86_400_000),
+})
+
+async function loadAccess(userId: string): Promise<AccessResult> {
+  if (!supabase) return previewAccess()
+  const [{ data: profile }, { data: sub }] = await Promise.all([
+    supabase.from('profiles').select('trial_ends_at').eq('id', userId).maybeSingle(),
+    supabase
+      .from('subscriptions')
+      .select('plan,status,current_period_end')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ])
+  const input: AccessInput = {
+    trialEndsAt: profile?.trial_ends_at ?? null,
+    plan: sub?.plan ?? null,
+    status: sub?.status ?? null,
+    currentPeriodEnd: sub?.current_period_end ?? null,
+  }
+  return evaluateAccess(input, new Date())
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [loading, setLoading] = useState(!isPreviewMode)
+  const [session, setSession] = useState<Session | null>(null)
+  const [access, setAccess] = useState<AccessResult | null>(isPreviewMode ? previewAccess() : null)
+
+  const refreshAccess = useCallback(async () => {
+    const uid = session?.user.id
+    setAccess(uid ? await loadAccess(uid) : isPreviewMode ? previewAccess() : null)
+  }, [session])
+
+  useEffect(() => {
+    if (!supabase) return
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      setLoading(false)
+    })
+    const { data } = supabase.auth.onAuthStateChange((_event, s) => setSession(s))
+    return () => data.subscription.unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    if (!isPreviewMode) void refreshAccess()
+  }, [refreshAccess])
+
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      loading,
+      session,
+      email: session?.user.email ?? (isPreviewMode ? 'preview@local' : null),
+      access,
+      preview: isPreviewMode,
+      async signIn(email, password) {
+        if (!supabase) return null
+        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        return error?.message ?? null
+      },
+      async signUp(email, password) {
+        if (!supabase) return null
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: window.location.origin },
+        })
+        return error?.message ?? null
+      },
+      async signInWithGoogle() {
+        if (!supabase) return null
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo: window.location.origin },
+        })
+        return error?.message ?? null
+      },
+      async signOut() {
+        await supabase?.auth.signOut()
+      },
+      refreshAccess,
+    }),
+    [loading, session, access, refreshAccess],
+  )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
+
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used inside AuthProvider')
+  return ctx
+}
