@@ -8,6 +8,8 @@ Everything here is done in your browser. Each step says exactly where to click.
    - Name: `studyapp`. Region: **Mumbai (ap-south-1)**. Set a strong database password and save it somewhere safe.
 2. When the project is ready, open **SQL Editor** → **New query**. Paste the whole contents of
    `supabase/migrations/0001_init.sql` from this repository and click **Run**. It should say "Success".
+   Then do the same, in a new query, for each later file in `supabase/migrations/` in number order
+   (`0002_sync.sql`, ...). Each file only needs to be run once.
 3. Open **Project Settings** → **API**. Copy two values:
    - **Project URL**
    - **anon public** key
