@@ -1,7 +1,7 @@
 // Timestamp-based timer engine. Elapsed time is derived from Date.now(),
 // so background tabs, sleep and throttled intervals never lose time.
 
-export type TimerMode = 'stopwatch' | 'countdown'
+export type TimerMode = 'stopwatch' | 'countdown' | 'pomodoro'
 
 export interface TimerState {
   mode: TimerMode
@@ -23,20 +23,23 @@ export const initialTimer = (mode: TimerMode = 'stopwatch', targetMs = 25 * 60_0
   sessionStartedAt: null,
 })
 
+/** Countdown and pomodoro both count down to targetMs. */
+export const countsDown = (mode: TimerMode) => mode !== 'stopwatch'
+
 export function elapsed(state: TimerState, now: number): number {
   const live = state.runningSince === null ? 0 : now - state.runningSince
   const total = state.accumulatedMs + live
-  return state.mode === 'countdown' ? Math.min(total, state.targetMs) : total
+  return countsDown(state.mode) ? Math.min(total, state.targetMs) : total
 }
 
 /** What the clock face shows: elapsed for stopwatch, remaining for countdown. */
 export function display(state: TimerState, now: number): number {
   const e = elapsed(state, now)
-  return state.mode === 'countdown' ? state.targetMs - e : e
+  return countsDown(state.mode) ? state.targetMs - e : e
 }
 
 export function isFinished(state: TimerState, now: number): boolean {
-  return state.mode === 'countdown' && elapsed(state, now) >= state.targetMs
+  return countsDown(state.mode) && elapsed(state, now) >= state.targetMs
 }
 
 export function start(state: TimerState, now: number): TimerState {
@@ -53,8 +56,8 @@ export function reset(state: TimerState): TimerState {
   return initialTimer(state.mode, state.targetMs)
 }
 
-export function setMode(state: TimerState, mode: TimerMode): TimerState {
-  return initialTimer(mode, state.targetMs)
+export function setMode(state: TimerState, mode: TimerMode, targetMs = state.targetMs): TimerState {
+  return initialTimer(mode, targetMs)
 }
 
 export function setTarget(state: TimerState, targetMs: number): TimerState {

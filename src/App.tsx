@@ -7,9 +7,12 @@ import { AccountPage } from './pages/AccountPage'
 import { AuthPage } from './pages/AuthPage'
 import { ComingSoon } from './pages/ComingSoon'
 import { FocusPage } from './pages/FocusPage'
+import { InsightsPage } from './pages/InsightsPage'
+import { LogPage } from './pages/LogPage'
+import { SettingsPage } from './pages/SettingsPage'
 import { UpgradePage } from './pages/UpgradePage'
 
-const BUILT = new Set(['/', '/account'])
+const BUILT = new Set(['/', '/account', '/log', '/stats', '/settings'])
 
 export default function App() {
   return (
@@ -23,6 +26,9 @@ export default function App() {
               <Route element={<AppLayout />}>
                 <Route index element={<FocusPage />} />
                 <Route path="/account" element={<AccountPage />} />
+                <Route path="/log" element={<LogPage />} />
+                <Route path="/stats" element={<InsightsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
                 {ALL_NAV.filter((n) => !BUILT.has(n.to)).map((n) => (
                   <Route key={n.to} path={n.to} element={<ComingSoon path={n.to} />} />
                 ))}
