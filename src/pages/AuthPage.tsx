@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 import { BRAND } from '../config/brand'
 
 export function AuthPage() {
   const { session, preview, signIn, signUp, signInWithGoogle } = useAuth()
-  const [mode, setMode] = useState<'signin' | 'signup'>('signup')
+  const initial = (useLocation().state as { mode?: 'signin' } | null)?.mode ?? 'signup'
+  const [mode, setMode] = useState<'signin' | 'signup'>(initial)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -29,7 +30,9 @@ export function AuthPage() {
     <div className="grid min-h-full place-items-center px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <img src="/favicon.svg" alt="" className="size-12" />
+          <Link to="/" aria-label={`${BRAND.name} home`}>
+            <img src="/favicon.svg" alt="" className="size-12" />
+          </Link>
           <h1 className="text-2xl font-semibold tracking-tight">{mode === 'signup' ? `Start your ${BRAND.trialDays}-day free trial` : 'Welcome back'}</h1>
           <p className="text-sm text-dim">{BRAND.tagline}</p>
         </div>
@@ -77,6 +80,17 @@ export function AuthPage() {
           <button type="button" className="font-medium text-accent" onClick={() => setMode(mode === 'signup' ? 'signin' : 'signup')}>
             {mode === 'signup' ? 'Sign in' : 'Create one'}
           </button>
+        </p>
+        <p className="mt-4 text-center text-xs text-faint">
+          By continuing you agree to the{' '}
+          <Link to="/terms" className="underline hover:text-dim">
+            Terms
+          </Link>{' '}
+          and{' '}
+          <Link to="/privacy" className="underline hover:text-dim">
+            Privacy Policy
+          </Link>
+          .
         </p>
       </div>
     </div>

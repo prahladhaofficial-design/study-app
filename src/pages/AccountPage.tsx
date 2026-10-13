@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 import { BRAND } from '../config/brand'
+import { LEGAL_LINKS } from '../config/legal'
 import { daysLeft } from '../lib/access'
 import { syncNow, useSyncStatus } from '../lib/sync'
 
@@ -71,6 +72,13 @@ export function AccountPage() {
           </button>
         )}
       </section>
+      <p className="flex gap-4 text-xs text-faint">
+        {LEGAL_LINKS.map((l) => (
+          <Link key={l.to} to={l.to} className="hover:text-dim">
+            {l.label}
+          </Link>
+        ))}
+      </p>
     </div>
   )
 }

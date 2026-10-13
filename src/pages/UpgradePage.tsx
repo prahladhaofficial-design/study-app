@@ -1,5 +1,6 @@
 import clsx from 'clsx'
 import { Check } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 import { BRAND } from '../config/brand'
 import { PLANS } from '../config/pricing'
@@ -45,12 +46,21 @@ export function UpgradePage() {
             )}
           >
             <span className="text-xs font-semibold uppercase tracking-wider text-faint">{plan.label}</span>
-            <span className="text-2xl font-semibold">{plan.price}</span>
+            <span className="text-2xl font-semibold">
+              {plan.price}
+              <span className="ml-1 text-sm font-normal text-dim">{plan.per}</span>
+            </span>
             <span className="text-sm text-dim">{plan.note}</span>
           </button>
         ))}
       </div>
-      <p className="text-xs text-faint">Checkout is connected on day 5 of the build.</p>
+      <p className="text-xs text-faint">
+        Checkout opens here very soon. See our{' '}
+        <Link to="/refunds" className="underline">
+          refund policy
+        </Link>
+        .
+      </p>
 
       {!preview && (
         <button type="button" onClick={() => void signOut()} className="text-sm text-dim underline">
